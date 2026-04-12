@@ -1,0 +1,41 @@
+---
+description: Coding conventions and patterns for the RAG chatbot backend
+globs: app/**/*.py
+alwaysApply: false
+---
+
+# Coding Conventions
+
+## Async Everywhere
+
+All DB operations use `AsyncSession`. Services are async functions. Use `await db.commit()` and `await db.refresh(obj)` after mutations.
+
+## Service Layer
+
+- Routes delegate to `app/services/` — keep route handlers thin.
+- Services accept `db: AsyncSession` as first arg.
+- `rag_service.py` owns all Gemini/embedding/vector-search logic.
+
+## Models
+
+- SQLAlchemy 2 `Mapped[]` annotations with `mapped_column()`.
+- UUIDs as primary keys (`uuid.uuid4` default).
+- `DateTime(timezone=True)` with `server_default=func.now()`.
+- pgvector `Vector()` column for embeddings (no fixed dimension).
+
+## Schemas
+
+- Pydantic v2 with `model_config = {"from_attributes": True}` for ORM mode.
+- Request schemas: `*Create`, `*Update`. Response schemas: `*Response`.
+
+## Error Handling
+
+- Raise `HTTPException` in services for expected errors (404, 400).
+- Background workers catch `Exception` and set status to `FAILED` — always log with `logger.exception()`.
+
+## Imports
+
+- Use `from app.config import get_settings` (not direct env reads).
+- Use `from app.models import X` (re-exported via `models/__init__.py`).
+- Use `langchain_text_splitters` (not `langchain.text_splitter`).
+- Use `from google import genai` (not `google.generativeai`).
