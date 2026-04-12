@@ -1,0 +1,76 @@
+---
+description: RAG Chatbot Backend — architecture, conventions, and key paths
+alwaysApply: true
+---
+
+# RAG Chatbot Backend
+
+Async Python backend for a Retrieval-Augmented Generation chatbot.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | FastAPI (async) |
+| Database | PostgreSQL 16 + pgvector (via Docker) |
+| ORM | SQLAlchemy 2 (async sessions) |
+| Migrations | Alembic (async) |
+| LLM / Embeddings | Google Gemini (`google-genai` SDK) |
+| Document parsing | Docling (PDF, DOCX, etc.) — plain `.txt` read directly |
+| Text splitting | `langchain-text-splitters` (`RecursiveCharacterTextSplitter`) |
+| SSE streaming | `sse-starlette` |
+| Config | `pydantic-settings` reading `.env` |
+
+## Directory Layout
+
+```
+app/
+  main.py              # FastAPI app, CORS, lifespan, /health
+  config.py            # Settings (pydantic-settings), cached via @lru_cache
+  database.py          # async engine + session factory
+  dependencies.py      # get_db() dependency
+  api/v1/
+    router.py          # mounts all sub-routers
+    knowledge_bases.py  # CRUD for knowledge bases
+    documents.py        # upload, get, delete documents
+    conversations.py    # create/list conversations, list messages
+    messages.py         # send message (SSE stream), citations, feedback
+  models/
+    knowledge_base.py   # KnowledgeBase, Document, DocumentChunk (pgvector)
+    conversation.py     # Conversation, Message, MessageCitation
+  schemas/              # Pydantic request/response models
+  services/
+    rag_service.py      # Gemini embeddings, vector search, prompt building, streaming chat
+    chat_service.py     # orchestrates conversation + RAG pipeline
+    knowledge_base_service.py
+    document_service.py
+  workers/
+    document_processor.py  # background task: parse → chunk → embed → store
+alembic/                # migrations (single initial revision)
+scripts/
+  smoke_test.py         # end-to-end curl-based test (8 steps)
+docker-compose.yml      # pgvector DB + app service
+```
+
+## Key Patterns
+
+- **Settings** are loaded once via `get_settings()` (`@lru_cache`). Module-level `settings = get_settings()` is common — requires server restart on `.env` changes.
+- **Gemini client** is a module-level singleton in `rag_service.py` (`_genai_client`).
+- **Document processing** runs as a FastAPI `BackgroundTasks` coroutine (not Celery). Status transitions: `PENDING → PROCESSING → COMPLETED | FAILED`.
+- **Vector search** uses pgvector's `cosine_distance` with `DocumentChunk.embedding`.
+- **Chat streaming** uses `generate_content_stream` → SSE events (`token`, `done`, `error`).
+- **Citations** are created after streaming completes, linking bot messages to retrieved chunks.
+
+## Environment Variables (`.env`)
+
+Required: `DATABASE_URL`, `GEMINI_API_KEY`
+Key tunables: `GEMINI_CHAT_MODEL`, `GEMINI_EMBED_MODEL`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `TOP_K_CHUNKS`
+
+## Running Locally
+
+```bash
+docker compose up -d db          # start pgvector
+alembic upgrade head             # apply migrations
+uvicorn app.main:app --reload    # start API
+python scripts/smoke_test.py     # verify end-to-end
+```

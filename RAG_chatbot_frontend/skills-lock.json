@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "skills": {
+    "critique": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "computedHash": "6781979707ea81b8585eab65bb3c54f6593429128170f8a53ad342dd7514cac6"
+    },
+    "distill": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "computedHash": "eb53dd6f18bbeb4d1b2986eaa858c9014b3c50b8ed9fcb68d841450c0b48bd12"
+    },
+    "frontend-design": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "computedHash": "2c211c20810c920c151279f0856355fc376922385fef56771c1987e9a6206f7a"
+    },
+    "normalize": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "computedHash": "82deb8f724b0188afee2bcc4f00a33b7446212ff831feda6d0b515e6d9ff0cea"
+    },
+    "optimize": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "computedHash": "36de9c64e36c778a01502ca9c98a7a6d54d4fa5215c62c01a2e93dcc5912d869"
+    },
+    "polish": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "computedHash": "12a83281065df7cecc24c17fdf9a126a13f664140ed6939c8230eb3f447d1aa3"
+    },
+    "react-doctor": {
+      "source": "millionco/react-doctor",
+      "sourceType": "github",
+      "computedHash": "276053f3861a6f29e2ab1922fc91281934dac5be78f85ec9f21604fd979383ee"
+    },
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "computedHash": "77faba608ea949351d1757e29e6cb726f6ec5937f7595be0593038a7d2d76bb9"
+    },
+    "teach-impeccable": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "computedHash": "759bfe9a53d48b87d60352db3403b62a0663e5187b2a2bd61d43657ac48d1a11"
+    }
+  }
+}

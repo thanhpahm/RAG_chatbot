@@ -1,0 +1,135 @@
+services:
+    db:
+        image: pgvector/pgvector:pg16
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER:-postgres}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+            POSTGRES_DB: ${POSTGRES_DB:-rag_chatbot}
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rag_chatbot}",
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        networks:
+            - internal
+
+    ollama:
+        image: ollama/ollama:latest
+        restart: unless-stopped
+        volumes:
+            - ollama_data:/root/.ollama
+        healthcheck:
+            test: ["CMD", "ollama", "list"]
+            interval: 10s
+            timeout: 5s
+            start_period: 30s
+            retries: 5
+        deploy:
+            resources:
+                limits:
+                    memory: 4G
+        networks:
+            - internal
+
+    # One-shot init container that pulls the embedding model into Ollama
+    ollama-pull:
+        image: ollama/ollama:latest
+        restart: "no"
+        depends_on:
+            ollama:
+                condition: service_healthy
+        entrypoint: ["ollama", "pull", "${OLLAMA_EMBED_MODEL:-embeddinggemma}"]
+        environment:
+            OLLAMA_HOST: http://ollama:11434
+        networks:
+            - internal
+
+    backend:
+        build:
+            context: ./rag_chatbot_backend
+            target: runtime
+        restart: unless-stopped
+        depends_on:
+            db:
+                condition: service_healthy
+            ollama:
+                condition: service_healthy
+            ollama-pull:
+                condition: service_completed_successfully
+        entrypoint: []
+        command:
+            - sh
+            - -c
+            - alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+        environment:
+            DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-rag_chatbot}
+            JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+            JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+            ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+            REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+            GEMINI_API_KEY: ${GEMINI_API_KEY:?Set GEMINI_API_KEY in .env}
+            GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.0-flash}
+            OLLAMA_BASE_URL: http://ollama:11434
+            OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-embeddinggemma}
+            STORAGE_DIR: /app/storage/uploads
+            ENVIRONMENT: ${ENVIRONMENT:-production}
+            ADMIN_SEED_USER_ID: ${ADMIN_SEED_USER_ID:-00000000-0000-0000-0000-000000000001}
+            ADMIN_SEED_USERNAME: ${ADMIN_SEED_USERNAME:-admin}
+            ADMIN_SEED_EMAIL: ${ADMIN_SEED_EMAIL:-admin@company.com}
+            ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-admin123}
+        ports:
+            - "${BACKEND_PORT:-8000}:8000"
+        volumes:
+            - uploads:/app/storage/uploads
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "python",
+                    "-c",
+                    "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+                ]
+            interval: 10s
+            timeout: 5s
+            start_period: 30s
+            retries: 3
+        deploy:
+            resources:
+                limits:
+                    memory: 2G
+        networks:
+            - internal
+
+    frontend:
+        build:
+            context: ./RAG_chatbot_frontend
+            args:
+                NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+        restart: unless-stopped
+        depends_on:
+            backend:
+                condition: service_healthy
+        ports:
+            - "${FRONTEND_PORT:-3000}:3000"
+        deploy:
+            resources:
+                limits:
+                    memory: 512M
+        networks:
+            - internal
+
+volumes:
+    pgdata:
+    uploads:
+    ollama_data:
+
+networks:
+    internal:
+        driver: bridge
