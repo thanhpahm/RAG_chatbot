@@ -1,6 +1,6 @@
 # RAG Chatbot Application
 
-Đây là một ứng dụng chatbot sử dụng công nghệ Retrieval-Augmented Generation (RAG) với kiến trúc microservices, bao gồm backend được xây dựng bằng FastAPI và frontend bằng Next.js.
+Đây là một ứng dụng chatbot sử dụng công nghệ Retrieval-Augmented Generation (RAG) với kiến trúc Monolyth, áp dụng mô hình MVC, bao gồm backend được xây dựng bằng FastAPI và frontend bằng Next.js.
 
 ## Cấu Trúc Dự Án
 
